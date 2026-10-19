@@ -19,9 +19,10 @@ def _ensure_db(database_url: str) -> bool:
 
 _ensure_db(config.get_database_url())
 
-user = login.current_user()
+cookie_manager = login.create_cookie_manager()
+user = login.current_user(cookie_manager)
 if user is None:
-    login.render_login()
+    login.render_login(cookie_manager)
     st.stop()
 
 PAGES = {
@@ -41,7 +42,7 @@ with st.sidebar:
     st.caption(config.ROLE_LABELS.get(user["role"], user["role"]))
     page_name = st.radio("Mục", list(PAGES), label_visibility="collapsed")
     if st.button("Đăng xuất", width="stretch"):
-        login.logout()
+        login.logout(cookie_manager)
         st.rerun()
 
 PAGES[page_name].render(user)

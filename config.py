@@ -35,6 +35,22 @@ def get_database_url() -> str:
     return url
 
 
+def get_auth_cookie_secret() -> str:
+    """Get the dedicated signing key for persistent login cookies."""
+    secret = os.environ.get("AUTH_COOKIE_SECRET", "").strip()
+    if not secret:
+        try:
+            secret = str(st.secrets.get("AUTH_COOKIE_SECRET", "")).strip()
+        except StreamlitSecretNotFoundError:
+            secret = ""
+    if len(secret) < 32 or secret.startswith("replace-with-"):
+        raise RuntimeError(
+            "AUTH_COOKIE_SECRET chưa được cấu hình hoặc ngắn hơn 32 ký tự. "
+            "Đặt một secret ngẫu nhiên trong .env hoặc Streamlit Cloud Secrets."
+        )
+    return secret
+
+
 # --- Vai trò -----------------------------------------------------------
 ROLE_ADMIN = "ADMIN"
 ROLE_MANAGER = "MANAGER"

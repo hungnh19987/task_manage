@@ -12,9 +12,10 @@ Khi triển khai lên Streamlit Community Cloud, kết nối GitHub repository, 
 
 ```toml
 DATABASE_URL = "postgresql://..."
+AUTH_COOKIE_SECRET = "...random-secret-at-least-32-characters..."
 ```
 
-Ứng dụng ưu tiên biến môi trường `DATABASE_URL`, sau đó đọc Streamlit Secrets; không đưa connection string vào source code hoặc commit `.streamlit/secrets.toml`. Giữ Supabase project hoạt động và dùng pooler được khuyến nghị trong dashboard cho kiểu chạy của ứng dụng.
+Tạo `AUTH_COOKIE_SECRET` bằng `python -c "import secrets; print(secrets.token_urlsafe(48))"`; giữ secret cố định giữa các lần deploy. Ứng dụng ưu tiên biến môi trường, sau đó đọc Streamlit Secrets; không đưa secrets vào source code hoặc commit `.streamlit/secrets.toml`. Đổi signing secret sẽ đăng xuất tất cả phiên cookie hiện tại. Giữ Supabase project hoạt động và dùng pooler được khuyến nghị trong dashboard cho kiểu chạy của ứng dụng.
 
 Có thể triển khai schema trực tiếp bằng `psql`:
 
@@ -27,7 +28,7 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
 
 SQLite cũ không được tự động chuyển dữ liệu. Hãy sao lưu database hiện tại và thực hiện chuyển dữ liệu riêng trước khi chuyển ứng dụng sang Supabase.
 
-Xác thực hiện dùng tài khoản trong PostgreSQL và hash scrypt hiện có. Không cài `streamlit-authenticator`: package quản lý credentials/cookie riêng và verifier bcrypt của nó không tương thích trực tiếp với hash scrypt cùng các thao tác khóa/reset tài khoản trong DB. Phiên đăng nhập hiện không dùng cookie lâu dài; đổi mật khẩu sẽ thu hồi các phiên đã đăng nhập ở lần tương tác tiếp theo, còn khóa tài khoản có hiệu lực khi app chạy lại.
+Xác thực dùng tài khoản PostgreSQL và hash scrypt. Cookie đăng nhập giữ token HMAC ký, chỉ gồm user ID, phiên bản xác thực và hạn dùng 30 ngày; mỗi lần tải trang, ứng dụng vẫn xác nhận tài khoản đang hoạt động và đối chiếu `auth_version` trong DB. Đổi mật khẩu thu hồi phiên cũ; đăng xuất xóa cookie. Cookie là bearer credential, vì vậy chỉ triển khai qua HTTPS và không chia sẻ token. Không cài `streamlit-authenticator`: credentials/cookie riêng và verifier bcrypt của package không khớp với tài khoản scrypt quản lý trong DB.
 
 ## 1. Cài đặt
 
@@ -73,7 +74,7 @@ Mặc định mở ở http://localhost:8501. Để các máy khác trong mạng
 streamlit run app.py --server.address 0.0.0.0 --server.port 8501
 ```
 
-Lưu ý: Streamlit chạy HTTP thường. Nếu đưa ra ngoài mạng nội bộ, hãy đặt sau reverse proxy có HTTPS. Đăng nhập chỉ có hiệu lực trong phiên trình duyệt; tải lại trang sẽ phải đăng nhập lại.
+Lưu ý: khi tự host, đặt Streamlit sau reverse proxy có HTTPS nếu truy cập ngoài mạng nội bộ. Cookie đăng nhập tồn tại tối đa 30 ngày; đóng/mở lại trình duyệt vẫn giữ đăng nhập đến khi hết hạn, đăng xuất, đổi mật khẩu hoặc khóa tài khoản.
 
 Ứng dụng đọc URL PostgreSQL từ `DATABASE_URL`. Có thể sao chép `.env.example` thành `.env` và điền connection string; không commit `.env` hoặc chia sẻ URL vì trong đó có thông tin đăng nhập.
 
@@ -213,7 +214,7 @@ Các file mẫu nằm trong thư mục `deploy/` và `.streamlit/config.toml`. V
 7. **Khôi phục sự cố**: dùng `pg_restore --no-owner --no-privileges --dbname "$DATABASE_URL" <file.dump>` như phần trên; không chép dump vào thư mục dữ liệu ứng dụng.
 8. **Quên mật khẩu**: quản trị viên đặt lại ở mục Tài khoản. Nếu mất cả tài khoản quản trị: `python -m scripts.create_admin` tạo thêm quản trị viên mới.
 
-Lưu ý bảo mật còn lại: ứng dụng chưa có giới hạn số lần đăng nhập sai. Nếu cho phép truy cập công khai, cần bổ sung rate limiting ở lớp edge/proxy hoặc chuyển sang nhà cung cấp danh tính có kiểm soát đăng nhập; Streamlit Community Cloud không dùng nginx cấu hình kèm dự án. Tải lại trang sẽ phải đăng nhập lại theo thiết kế hiện tại.
+Lưu ý bảo mật còn lại: ứng dụng chưa có giới hạn số lần đăng nhập sai. Nếu cho phép truy cập công khai, cần bổ sung rate limiting ở lớp edge/proxy hoặc chuyển sang nhà cung cấp danh tính có kiểm soát đăng nhập; Streamlit Community Cloud không dùng nginx cấu hình kèm dự án.
 
 ## 8. Cấu trúc thư mục
 
