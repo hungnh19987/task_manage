@@ -23,6 +23,9 @@ class Record(dict):
 
 
 def _row_factory(cursor):
+    # Kiểm tra nếu description là None (lệnh không trả về hàng dữ liệu)
+    if cursor.description is None:
+        return lambda row: row
     columns = [column.name for column in cursor.description]
     return lambda values: Record(zip(columns, values))
 
