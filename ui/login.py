@@ -62,7 +62,8 @@ def _decode_login_token(token: str) -> Optional[dict]:
 
 
 def _clear_cookie(manager) -> None:
-    manager.delete(COOKIE_NAME)
+    if manager.get(COOKIE_NAME) is not None:
+        manager.delete(COOKIE_NAME)
 
 
 def current_user(manager=None) -> Optional[dict]:
@@ -126,8 +127,9 @@ def render_login(manager=None) -> None:
                         cookie=COOKIE_NAME,
                         val=token,
                         expires_at=expires_at,
+                        secure=True,
+                        same_site="lax",
                     )
                     st.session_state[SESSION_KEY] = user
-                    st.rerun()
             else:
                 st.error("Sai tên đăng nhập hoặc mật khẩu, hoặc tài khoản đã bị khóa.")

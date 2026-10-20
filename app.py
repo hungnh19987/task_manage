@@ -41,8 +41,11 @@ with st.sidebar:
     st.write(f"**{user['full_name']}**")
     st.caption(config.ROLE_LABELS.get(user["role"], user["role"]))
     page_name = st.radio("Mục", list(PAGES), label_visibility="collapsed")
-    if st.button("Đăng xuất", width="stretch"):
-        login.logout(cookie_manager)
-        st.rerun()
+    logout_clicked = st.button("Đăng xuất", width="stretch")
+
+if logout_clicked:
+    login.logout(cookie_manager)
+    login.render_login(cookie_manager)
+    st.stop()
 
 PAGES[page_name].render(user)
